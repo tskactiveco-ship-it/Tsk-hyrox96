@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TSK HYROX96 | لوحة الإدارة</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f5;color:#171918;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:20px 14px}.head{text-align:center;margin:8px 0 20px}.head .brand{color:#15945f;font-weight:950;letter-spacing:1.5px}.head h1{margin:7px 0 3px}
+.card{background:#fff;border:1px solid #e1e5e3;border-radius:20px;padding:17px;margin-bottom:14px;box-shadow:0 10px 28px #0000000b}
+input{width:100%;height:48px;border:1px solid #cdd4d0;border-radius:12px;padding:0 13px;font-size:15px}
+button{border:0;border-radius:11px;padding:11px 14px;font-weight:900;cursor:pointer}.primary{background:#171918;color:#fff}.green{background:#15945f;color:#fff}.light{background:#eef2f0}.hide{display:none!important}
+.login input{margin:5px 0}.login .primary{width:100%;margin-top:8px;height:50px}.msg{padding:10px;border-radius:10px;margin-top:8px;background:#fff0f0;color:#9d171c}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}.muted{color:#717975;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.stat{background:#fff;border:1px solid #e1e5e3;border-radius:16px;padding:14px;text-align:center}.stat strong{font-size:27px;display:block}.stat small{color:#6f7773}
+.searchrow{display:grid;grid-template-columns:1fr auto;gap:8px}.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:11px 8px;border-bottom:1px solid #edf0ee;text-align:right;font-size:13px}th{color:#6c746f;background:#fafbfa;position:sticky;top:0}
+.code{direction:ltr;font-weight:900;white-space:nowrap}.active{color:#0c7a4d;font-weight:900}.used{color:#c11e25;font-weight:900}.expired{color:#666;font-weight:900}
+.actions{display:flex;gap:4px;white-space:nowrap}.actions button{padding:11px 12px;font-size:13px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.p1{background:#171918;color:#fff}.p2{background:#e8ecea}.p3{background:#f3e5d9}
+.badge{display:inline-block;border-radius:999px;padding:4px 8px;background:#eef4f1;font-weight:800}.refresh{display:flex;gap:8px;align-items:center}
+@media(max-width:650px){.stats{grid-template-columns:1fr 1fr}.top{align-items:flex-start}}
+</style></head>
+<body><div class="wrap">
+<div class="head"><div class="brand">TSK ACTIVE × FITNESS TIME · HYROX96</div><h1>لوحة الإدارة</h1><div class="muted">إدارة المشاركين والكوبونات والفائزين</div></div>
+
+<section id="loginCard" class="card login">
+<h2>دخول الإدارة</h2>
+<input id="email" type="email" placeholder="بريد الإدارة (+admin)">
+<input id="password" type="password" placeholder="كلمة المرور">
+<button class="primary" onclick="login()">دخول</button>
+<div id="loginMsg" class="msg hide"></div>
+</section>
+
+<div id="app" class="hide">
+<section class="card top">
+<div><b>حساب الإدارة</b><div id="who" class="muted"></div></div>
+<div class="refresh"><button class="light" onclick="loadDashboard()">تحديث</button><button class="light" onclick="logout()">خروج</button></div>
+</section>
+
+<div class="stats">
+<div class="stat"><strong id="stTotal">0</strong><small>إجمالي المشاركين</small></div>
+<div class="stat"><strong id="stActive">0</strong><small>نشط</small></div>
+<div class="stat"><strong id="stUsed">0</strong><small>مستخدم</small></div>
+<div class="stat"><strong id="stExpired">0</strong><small>منتهي</small></div>
+</div>
+
+<section class="card">
+<div class="searchrow"><input id="search" placeholder="بحث بالاسم أو الجوال أو رقم الكوبون" oninput="render()"><button class="green" onclick="render()">بحث</button></div>
+</section>
+
+<section class="card">
+<div class="top"><h3>الكوبونات</h3><span id="shown" class="muted"></span></div>
+<div class="table"><table>
+<thead><tr><th>الكوبون</th><th>المشترك</th><th>الجوال</th><th>الخصم</th><th>الحالة</th><th>المركز / تعديل الجائزة</th></tr></thead>
+<tbody id="rows"></tbody>
+</table></div>
+</section>
+</div></div>
+
+<script>
+const sb=supabase.createClient("https://sezoubkyjparatkaosyl.supabase.co","sb_publishable_fn3jCgyzdE_F057C9C3lNw_2lljbKHQ");
+let rewards=[];
+
+function loginMessage(t){loginMsg.textContent=t;loginMsg.classList.remove("hide")}
+async function login(){
+ loginMsg.classList.add("hide");
+ const {data,error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
+ if(error)return loginMessage("بيانات الدخول غير صحيحة.");
+ const {data:admin,error:aerr}=await sb.rpc("hyrox96_is_admin");
+ if(aerr||!admin){await sb.auth.signOut();return loginMessage("هذا الحساب ليس حساب إدارة.");}
+ show(data.user); await loadDashboard();
+}
+function show(user){loginCard.classList.add("hide");app.classList.remove("hide");who.textContent=user.email||""}
+async function logout(){await sb.auth.signOut();app.classList.add("hide");loginCard.classList.remove("hide")}
+
+async function loadDashboard(){
+ const {data,error}=await sb.rpc("hyrox96_admin_dashboard");
+ if(error){alert(error.message);return}
+ const s=data.stats||{};
+ stTotal.textContent=s.total||0;stActive.textContent=s.active||0;stUsed.textContent=s.used||0;stExpired.textContent=s.expired||0;
+ rewards=data.rewards||[];render();
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function statusAr(s){return s==="ACTIVE"?"نشط":s==="USED"?"مستخدم":s==="EXPIRED"?"منتهي":s==="CANCELLED"?"ملغي":s}
+function categoryAr(c){return c==="FIRST"?"الأول":c==="SECOND"?"الثاني":c==="THIRD"?"الثالث":"مشارك"}
+function render(){
+ const term=(search.value||"").trim().toLowerCase();
+ const list=rewards.filter(r=>!term||[r.couponCode,r.name,r.phone].some(v=>String(v||"").toLowerCase().includes(term)));
+ shown.textContent="المعروض: "+list.length;
+ rows.innerHTML=list.map(r=>`<tr>
+ <td class="code">${esc(r.couponCode)}</td><td>${esc(r.name)}</td><td dir="ltr">${esc(r.phone)}</td>
+ <td><span class="badge">${r.discount}%</span></td>
+ <td class="${r.status==="ACTIVE"?"active":r.status==="USED"?"used":"expired"}">${statusAr(r.status)}</td>
+ <td>${r.status==="ACTIVE"?`<div class="actions">
+ <button type="button" class="p1 winner-btn" data-code="${esc(r.couponCode)}" data-place="1">الأول 50%</button>
+ <button type="button" class="p2 winner-btn" data-code="${esc(r.couponCode)}" data-place="2">الثاني 30%</button>
+ <button type="button" class="p3 winner-btn" data-code="${esc(r.couponCode)}" data-place="3">الثالث 15%</button>
+ </div>`:`${categoryAr(r.category)}`}</td>
+ </tr>`).join("") || `<tr><td colspan="6">لا توجد نتائج.</td></tr>`;
+}
+async function setWinner(code,place,btn){
+ const labels={1:"الأول 50%",2:"الثاني 30%",3:"الثالث 15%"};
+ const oldText=btn.textContent;
+ btn.disabled=true;
+ btn.textContent="جارٍ الحفظ...";
+ try{
+   const {data,error}=await sb.rpc("hyrox96_set_winner",{
+     p_coupon:String(code).trim().toUpperCase(),
+     p_place:Number(place)
+   });
+   if(error) throw error;
+   btn.textContent="تم ✓";
+   await loadDashboard();
+   showNotice("تم تعديل "+code+" إلى "+labels[place]+" بنجاح.","ok");
+ }catch(e){
+   btn.disabled=false;
+   btn.textContent=oldText;
+   showNotice("لم يتم التعديل: "+(e && e.message ? e.message : String(e)),"err");
+ }
+}
+function showNotice(text,type){
+ let n=document.getElementById("notice");
+ if(!n){
+   n=document.createElement("div"); n.id="notice";
+   n.style.cssText="position:fixed;left:14px;right:14px;bottom:18px;z-index:9999;padding:15px;border-radius:14px;font-weight:900;text-align:center;box-shadow:0 8px 30px #0003";
+   document.body.appendChild(n);
+ }
+ n.style.background=type==="ok"?"#dff7ea":"#ffe3e3";
+ n.style.color=type==="ok"?"#08633d":"#9d171c";
+ n.textContent=text;
+ n.style.display="block";
+ setTimeout(()=>n.style.display="none",5000);
+}
+document.addEventListener("click",function(e){
+ const btn=e.target.closest(".winner-btn");
+ if(!btn)return;
+ e.preventDefault();
+ setWinner(btn.dataset.code,Number(btn.dataset.place),btn);
+});
+(async()=>{
+ const {data:{session}}=await sb.auth.getSession();
+ if(session){const {data:a}=await sb.rpc("hyrox96_is_admin");if(a){show(session.user);await loadDashboard()}}
+})();
+</script></body></html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TSK HYROX96 | بوابة الموظف</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#15945f;--r:#d71920;--ink:#161918;--muted:#6f7773;--line:#e3e7e5;--bg:#f4f7f5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;color:var(--ink)}
+.wrap{max-width:520px;margin:auto;min-height:100vh;padding:24px 16px}.brand{text-align:center;margin:10px 0 24px}.brand .tag{font-size:12px;letter-spacing:2px;color:var(--g);font-weight:900}.brand h1{margin:8px 0 4px;font-size:28px}.brand p{margin:0;color:var(--muted)}
+.card{background:white;border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 14px 40px rgba(0,0,0,.06);margin-bottom:16px}
+label{display:block;font-weight:800;margin:14px 0 7px}input{width:100%;height:52px;border:1px solid #cfd6d2;border-radius:14px;padding:0 14px;font-size:16px;background:#fff}
+button{width:100%;height:54px;border:0;border-radius:15px;font-size:16px;font-weight:900;cursor:pointer;margin-top:14px}.primary{background:var(--ink);color:#fff}.redeem{background:var(--r);color:#fff}.ghost{background:#eef3f0;color:var(--ink)}
+.hide{display:none!important}.msg{margin-top:12px;padding:12px;border-radius:12px;background:#f3f5f4;color:#49504c;font-size:14px}.err{background:#fff0f0;color:#a2141a}.ok{background:#eaf8f1;color:#126b47}
+.result{text-align:center}.discount{font-size:56px;font-weight:1000;color:var(--g);direction:ltr;margin:4px 0}.code{direction:ltr;font-weight:1000;font-size:22px;letter-spacing:1px;margin:8px 0}.name{font-size:20px;font-weight:900}
+.status{display:inline-block;border-radius:999px;padding:8px 14px;font-weight:900;margin:10px 0}.active{background:#e7f8ef;color:#0d774c}.used{background:#ffebeb;color:#b2171d}.expired{background:#f0f0f0;color:#555}
+.meta{border-top:1px solid var(--line);margin-top:14px;padding-top:14px;text-align:right;color:#59615d;line-height:1.9;font-size:14px}
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:10px}.toprow button{width:auto;height:40px;padding:0 14px;margin:0}.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="tag">TSK ACTIVE · HYROX96</div>
+    <h1>بوابة الموظف</h1>
+    <p>التحقق واستخدام كوبونات الفعالية</p>
+  </div>
+
+  <section id="loginCard" class="card">
+    <h2>تسجيل دخول الموظف</h2>
+    <label>البريد الإلكتروني</label>
+    <input id="email" type="email" autocomplete="username" placeholder="البريد المستخدم في Supabase">
+    <label>كلمة المرور</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button class="primary" onclick="login()">دخول</button>
+    <div id="loginMsg" class="msg hide"></div>
+  </section>
+
+  <section id="staffCard" class="card hide">
+    <div class="toprow"><div><b>موظف TSK</b><div id="who" class="small"></div></div><button class="ghost" onclick="logout()">خروج</button></div>
+    <label>رقم الكوبون</label>
+    <input id="coupon" dir="ltr" autocomplete="off" placeholder="HY96-00001">
+    <button class="primary" onclick="verifyCoupon()">تحقق من الكوبون</button>
+    <div id="verifyMsg" class="msg hide"></div>
+  </section>
+
+  <section id="resultCard" class="card result hide">
+    <div id="discount" class="discount">10%</div>
+    <div id="custName" class="name"></div>
+    <div id="couponCode" class="code"></div>
+    <div id="statusBadge" class="status"></div>
+    <div id="meta" class="meta"></div>
+    <button id="redeemBtn" class="redeem hide" onclick="redeemCoupon()">استخدام الكوبون الآن</button>
+  </section>
+</div>
+
+<script>
+const SUPABASE_URL = "https://sezoubkyjparatkaosyl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_fn3jCgyzdE_F057C9C3lNw_2lljbKHQ";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentReward = null;
+
+function showMsg(id,text,type=""){
+  const el=document.getElementById(id); el.textContent=text; el.className="msg "+type;
+}
+function hideMsg(id){document.getElementById(id).className="msg hide"}
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session) showStaff(session.user);
+}
+function showStaff(user){
+  loginCard.classList.add("hide"); staffCard.classList.remove("hide");
+  who.textContent=user.email||"";
+}
+async function login(){
+  hideMsg("loginMsg");
+  const e=email.value.trim(), p=password.value;
+  if(!e||!p){showMsg("loginMsg","أدخل البريد وكلمة المرور.","err");return}
+  const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});
+  if(error){showMsg("loginMsg","بيانات الدخول غير صحيحة.","err");return}
+  showStaff(data.user);
+}
+async function logout(){
+  await sb.auth.signOut(); currentReward=null;
+  staffCard.classList.add("hide"); resultCard.classList.add("hide"); loginCard.classList.remove("hide");
+}
+function cleanCoupon(v){
+  v=(v||"").trim().toUpperCase();
+  if(v.includes("|")) v=v.split("|").pop();
+  if(v.includes(":")) v=v.split(":").pop();
+  return v.trim();
+}
+async function verifyCoupon(){
+  hideMsg("verifyMsg"); resultCard.classList.add("hide");
+  const c=cleanCoupon(coupon.value);
+  if(!c){showMsg("verifyMsg","أدخل رقم الكوبون.","err");return}
+  const {data,error}=await sb.rpc("hyrox96_verify",{p_coupon:c});
+  if(error){showMsg("verifyMsg","تعذر التحقق من الكوبون.","err");return}
+  if(!data?.ok){showMsg("verifyMsg",data?.message||"الكوبون غير موجود.","err");return}
+  currentReward=data.reward; renderReward();
+}
+function renderReward(){
+  const r=currentReward; if(!r)return;
+  discount.textContent=(r.discount||0)+"%";
+  custName.textContent=r.name||"";
+  couponCode.textContent=r.couponCode||"";
+  let status=r.status||"";
+  statusBadge.textContent=status==="ACTIVE"?"نشط":status==="USED"?"مستخدم":status==="EXPIRED"?"منتهي":status;
+  statusBadge.className="status "+(status==="ACTIVE"?"active":status==="USED"?"used":"expired");
+  let lines=["الفعالية: HYROX96","الصلاحية: حتى 31 أكتوبر 2026"];
+  if(r.usedAt) lines.push("تم الاستخدام: "+new Date(r.usedAt).toLocaleString("ar-SA"));
+  if(r.usedBy) lines.push("بواسطة: "+r.usedBy);
+  meta.innerHTML=lines.join("<br>");
+  redeemBtn.classList.toggle("hide",status!=="ACTIVE");
+  resultCard.classList.remove("hide");
+}
+async function redeemCoupon(){
+  if(!currentReward||currentReward.status!=="ACTIVE")return;
+  if(!confirm("تأكيد استخدام الكوبون؟ بعد التأكيد لا يمكن استخدامه مرة أخرى."))return;
+  const {data:{user}}=await sb.auth.getUser();
+  const staff=user?.email||"TSK Staff";
+  redeemBtn.disabled=true; redeemBtn.textContent="جارٍ الاستخدام...";
+  const {data,error}=await sb.rpc("hyrox96_redeem",{p_coupon:currentReward.couponCode,p_staff:staff});
+  redeemBtn.disabled=false; redeemBtn.textContent="استخدام الكوبون الآن";
+  if(error){alert(error.message||"تعذر استخدام الكوبون."); await verifyCoupon(); return}
+  await verifyCoupon();
+  alert("تم استخدام الكوبون بنجاح.");
+}
+init();
+</script>
+</body></html>
