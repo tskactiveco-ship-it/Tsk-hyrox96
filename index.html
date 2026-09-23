@@ -130,20 +130,47 @@ input{height:52px!important;background:#171a19!important;border:1px solid #4d555
 <div class="feature"><div class="ico">✦</div><b>تحدَّ نفسك</b><small>لنسخة أفضل</small></div>
 </section>
 
-<main class="content"><section id="reg" class="card">
-<p class="lead"><b>مجهودك يستحق</b>سجّل بياناتك لتحصل على كوبون جائزتك الرقمي.</p>
-<div class="reward-callout">
-  <div><small>جائزة المشاركة</small><strong>10%</strong></div>
-  <p>خصم تلقائي للمشاركين في التحدي</p>
-</div><div class="field"><label>الاسم الكامل</label><input id="nm" placeholder="اكتب اسمك"></div>
-<div class="field"><label>رقم الجوال</label><input id="ph" inputmode="tel" placeholder="05xxxxxxxx"></div>
-<div class="field"><label>رمز الفعالية</label><div class="fixed"><strong>HYROX96</strong><span>ثابت تلقائيًا</span></div></div>
-<button class="cta" onclick="go()">احصل على جائزتك</button>
-<button type="button" class="previewBtn" onclick="previewCoupon()">استعراض الكوبون</button>
-<div id="previewMsg" style="display:none;margin-top:10px;text-align:center;font-size:13px;font-weight:800"></div>
-</section>
-<section id="pass" class="card pass hide"><div class="passTop"><small>HYROX96 · TSK REWARD PASS</small><div class="pct" id="pct">10%</div><div id="winnerNote" class="winner-note"></div><b id="rewardTitle">جائزة المشاركة</b></div><div class="passBody"><h2 id="pn"></h2><div class="code" id="cc"></div><div id="qr" class="qr"></div><b>متاح للاستخدام</b><p>صالح حتى 31 أكتوبر 2026</p><div class="terms">استخدام مرة واحدة فقط • شخصي وغير قابل للتحويل • لا يستبدل بمبلغ نقدي • لا يجمع مع عروض أو خصومات أخرى.</div></div></section>
+<main class="content">
+<section id="reg" class="card">
+  <p class="lead"><b>استعلام عن بطاقة HYROX96</b>أدخل رقم البطاقة للتحقق من حالتها، أو ابحث برقم الجوال بعد تفعيلها.</p>
 
+  <div class="field">
+    <label>رقم البطاقة</label>
+    <input id="cardNo" dir="ltr" autocomplete="off" placeholder="HY96-P004">
+  </div>
+  <button class="cta" onclick="lookupCard()">التحقق من البطاقة</button>
+
+  <div style="height:1px;background:#363b39;margin:22px 0"></div>
+
+  <div class="field">
+    <label>البحث برقم الجوال</label>
+    <input id="phoneSearch" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05xxxxxxxx">
+  </div>
+  <button type="button" class="previewBtn" onclick="lookupPhone()">بحث برقم الجوال</button>
+
+  <div id="previewMsg" style="display:none;margin-top:14px;text-align:center;font-size:13px;font-weight:800;line-height:1.8"></div>
+  <div style="margin-top:18px;text-align:center;color:#a4aba8;font-size:12px;line-height:1.8">
+    للاستعلام: <span dir="ltr" style="color:#fff;font-weight:900">STK.active.co@gmail.com</span>
+  </div>
+</section>
+
+<section id="pass" class="card pass hide">
+  <div class="passTop">
+    <small>HYROX96 · TSK REWARD PASS</small>
+    <div class="pct" id="pct">10%</div>
+    <div id="winnerNote" class="winner-note"></div>
+    <b id="rewardTitle">جائزة المشاركة</b>
+  </div>
+  <div class="passBody">
+    <h2 id="pn"></h2>
+    <div class="code" id="cc"></div>
+    <div id="qr" class="qr"></div>
+    <b id="cardState">مفعّل</b>
+    <p>صالح حتى 31 أكتوبر 2026</p>
+    <div class="terms">استخدام مرة واحدة فقط • شخصي وغير قابل للتحويل • لا يستبدل بمبلغ نقدي • لا يجمع مع عروض أو خصومات أخرى.</div>
+    <button type="button" class="previewBtn" onclick="backToSearch()">استعلام آخر</button>
+  </div>
+</section>
 </main>
 
 <footer class="pro-foot"><b>مجهودك يستحق</b><span>TSK ACTIVE × FITNESS TIME · HYROX96</span></footer>
@@ -151,114 +178,77 @@ input{height:52px!important;background:#171a19!important;border:1px solid #4d555
 const SUPABASE_URL='https://sezoubkyjparatkaosyl.supabase.co';
 const SUPABASE_KEY='sb_publishable_fn3jCgyzdE_F057C9C3lNw_2lljbKHQ';
 
-async function rpc(fn, body){
+async function rpc(fn,body){
   const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`,{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`},
     body:JSON.stringify(body)
   });
   const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.message || data.error || 'تعذر الاتصال بالنظام');
+  if(!res.ok) throw new Error(data.message||data.error||'تعذر الاتصال بالنظام');
   return data;
 }
-
-async function previewCoupon(){
-  const name=document.getElementById('nm').value.trim();
-  const phone=document.getElementById('ph').value.trim();
-  const m=document.getElementById('previewMsg');
-  if(!phone){
-    m.style.display='block';
-    m.style.color='#9d171c';
-    m.textContent='أدخل رقم الجوال لاستعراض كوبونك.';
-    return;
-  }
-  m.style.display='block';
-  m.style.color='#555';
-  m.textContent='جارٍ استعراض الكوبون...';
+function msg(text,bad=false){
+  previewMsg.style.display='block';
+  previewMsg.style.color=bad?'#ff7b80':'#d9e2de';
+  previewMsg.innerHTML=text;
+}
+function cleanCoupon(v){
+  v=(v||'').trim().toUpperCase();
+  if(v.includes('|'))v=v.split('|').pop();
+  if(v.includes(':'))v=v.split(':').pop();
+  return v.trim();
+}
+function isPlaceholder(r){
+  const c=(r?.couponCode||'').toUpperCase(),p=(r?.phone||'').toUpperCase(),n=r?.name||'';
+  return /^HY96-P[0-9]{3}$/.test(c)&&(p.startsWith('PRINT-')||n.startsWith('بطاقة البطولة'));
+}
+function effectiveStatus(r){
+  let s=r?.status||'';
+  if(s==='ACTIVE'&&r?.expiresAt&&new Date(r.expiresAt).getTime()<Date.now())s='EXPIRED';
+  return s;
+}
+async function lookupCard(){
+  const c=cleanCoupon(cardNo.value);
+  if(!c){msg('أدخل رقم البطاقة أولاً.',true);return}
+  msg('جارٍ التحقق من البطاقة...');
   try{
-    // Registration RPC returns the existing coupon for an already registered mobile.
-    // If this mobile is new, do not preview-create here; warn the participant to use the main CTA.
-    const normalized=phone.replace(/[^0-9]/g,'');
-    const data=await rpc('hyrox96_register',{p_name:name||'مشارك HYROX96',p_phone:normalized});
-    if(data && data.ok && data.reward){
-      m.style.display='none';
-      showParticipant(data.reward);
-    }else{
-      throw new Error('تعذر استعراض الكوبون');
+    const data=await rpc('hyrox96_verify',{p_coupon:c});
+    if(!data?.ok||!data.reward)throw new Error(data?.message||'رقم البطاقة غير موجود.');
+    const r=data.reward;
+    if(isPlaceholder(r)){
+      msg('هذه البطاقة غير مفعّلة.<br><b>يرجى التوجه إلى TSK فرع الصفوة لتفعيل البطاقة.</b><br><br>للاستعلام: <span dir="ltr">STK.active.co@gmail.com</span>',true);
+      return;
     }
-  }catch(e){
-    m.style.color='#9d171c';
-    m.textContent=e.message||'تعذر استعراض الكوبون.';
-  }
+    showParticipant(r);
+  }catch(e){msg(e.message||'تعذر التحقق من البطاقة.',true)}
+}
+async function lookupPhone(){
+  const p=phoneSearch.value.trim();
+  if(!p){msg('أدخل رقم الجوال للبحث.',true);return}
+  msg('جارٍ البحث برقم الجوال...');
+  try{
+    const data=await rpc('hyrox96_lookup_phone',{p_phone:p});
+    if(!data?.ok||!data.reward){
+      msg('لا توجد بطاقة مفعّلة مرتبطة بهذا الرقم.<br>إذا كانت لديك بطاقة مطبوعة غير مفعّلة، يرجى التوجه إلى <b>TSK فرع الصفوة</b> للتفعيل.<br><br>للاستعلام: <span dir="ltr">STK.active.co@gmail.com</span>',true);
+      return;
+    }
+    showParticipant(data.reward);
+  }catch(e){msg('تعذر العثور على بطاقة مفعّلة بهذا الرقم.<br>للاستعلام: <span dir="ltr">STK.active.co@gmail.com</span>',true)}
 }
 function showParticipant(r){
-  reg.classList.add('hide'); pass.classList.remove('hide');
-
-  const code=r.couponCode || '';
-  pn.textContent=r.name || '';
-  cc.textContent=code;
-  pct.textContent=(r.discount || 10)+'%';
-
-  // Same coupon and same QR: winner upgrade never creates a new coupon.
-  qr.innerHTML='';
-  new QRCode(qr,{text:code,width:182,height:182});
-
+  reg.classList.add('hide');pass.classList.remove('hide');
+  const code=r.couponCode||'',status=effectiveStatus(r);
+  pn.textContent=r.name||'';cc.textContent=code;pct.textContent=(r.discount||10)+'%';
+  qr.innerHTML='';new QRCode(qr,{text:code,width:182,height:182});
   pass.classList.remove('winner-first','winner-second','winner-third');
-  const title=document.getElementById('rewardTitle');
-  const note=document.getElementById('winnerNote');
-
-  if(r.category==='FIRST' || Number(r.discount)===50){
-    pass.classList.add('winner-first');
-    title.textContent='جائزة المركز الأول';
-    note.textContent='🏆 مبروك! المركز الأول';
-  }else if(r.category==='SECOND' || Number(r.discount)===30){
-    pass.classList.add('winner-second');
-    title.textContent='جائزة المركز الثاني';
-    note.textContent='🥈 مبروك! المركز الثاني';
-  }else if(r.category==='THIRD' || Number(r.discount)===15){
-    pass.classList.add('winner-third');
-    title.textContent='جائزة المركز الثالث';
-    note.textContent='🥉 مبروك! المركز الثالث';
-  }else{
-    title.textContent='جائزة المشاركة';
-    note.textContent='';
-  }
-
-  const state=pass.querySelector('.passBody > b');
-  if(state) state.textContent=r.status==='USED'?'تم استخدام الكوبون':'متاح للاستخدام';
-
-  // Re-check the same coupon while the page is open, so an admin winner update
-  // changes this card automatically without issuing another coupon.
-  window.__hyroxCoupon=code;
-  clearInterval(window.__hyroxRefresh);
-  window.__hyroxRefresh=setInterval(async()=>{
-    try{
-      if(!window.__hyroxCoupon) return;
-      const v=await rpc('hyrox96_verify',{p_coupon:window.__hyroxCoupon});
-      if(v && v.ok && v.reward){
-        const rr=v.reward;
-        const changed=Number(pct.textContent.replace('%',''))!==Number(rr.discount) ||
-          (rr.category==='FIRST'&&!pass.classList.contains('winner-first')) ||
-          (rr.category==='SECOND'&&!pass.classList.contains('winner-second')) ||
-          (rr.category==='THIRD'&&!pass.classList.contains('winner-third'));
-        if(changed) showParticipant(rr);
-      }
-    }catch(e){}
-  },8000);
+  if(r.category==='FIRST'||Number(r.discount)===50){pass.classList.add('winner-first');rewardTitle.textContent='جائزة المركز الأول';winnerNote.textContent='🏆 مبروك! المركز الأول'}
+  else if(r.category==='SECOND'||Number(r.discount)===30){pass.classList.add('winner-second');rewardTitle.textContent='جائزة المركز الثاني';winnerNote.textContent='🥈 مبروك! المركز الثاني'}
+  else if(r.category==='THIRD'||Number(r.discount)===15){pass.classList.add('winner-third');rewardTitle.textContent='جائزة المركز الثالث';winnerNote.textContent='🥉 مبروك! المركز الثالث'}
+  else{rewardTitle.textContent='جائزة المشاركة';winnerNote.textContent=''}
+  cardState.textContent=status==='USED'?'مستخدم':status==='EXPIRED'?'منتهي':status==='CANCELLED'?'ملغي':'مفعّل';
 }
-
-async function go(){
-  const n=nm.value.trim(), p=ph.value.trim();
-  if(!n||!p){alert('يرجى إدخال الاسم ورقم الجوال.');return}
-  const btn=document.querySelector('#reg .cta');
-  btn.disabled=true; btn.textContent='جاري إصدار الجائزة...';
-  try{
-    const data=await rpc('hyrox96_register',{p_name:n,p_phone:p});
-    if(!data || data.ok!==true || !data.reward) throw new Error('لم تصل بيانات الكوبون');
-    showParticipant(data.reward);
-  }catch(e){alert(e.message || 'تعذر إصدار الجائزة');}
-  finally{btn.disabled=false;btn.textContent='احصل على جائزتك';}
+function backToSearch(){
+  pass.classList.add('hide');reg.classList.remove('hide');previewMsg.style.display='none';
 }
-
-function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 </script></body></html>
