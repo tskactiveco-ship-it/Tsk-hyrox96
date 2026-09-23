@@ -15,7 +15,7 @@ button{width:100%;height:54px;border:0;border-radius:15px;font-size:16px;font-we
 .hide{display:none!important}.msg{margin-top:12px;padding:12px;border-radius:12px;background:#f3f5f4;color:#49504c;font-size:14px}.err{background:#fff0f0;color:#a2141a}.ok{background:#eaf8f1;color:#126b47}
 .result{text-align:center}.discount{font-size:56px;font-weight:1000;color:var(--g);direction:ltr;margin:4px 0}.code{direction:ltr;font-weight:1000;font-size:22px;letter-spacing:1px;margin:8px 0}.name{font-size:20px;font-weight:900}
 .status{display:inline-block;border-radius:999px;padding:8px 14px;font-weight:900;margin:10px 0}.active{background:#e7f8ef;color:#0d774c}.used{background:#ffebeb;color:#b2171d}.expired{background:#f0f0f0;color:#555}
-.meta{border-top:1px solid var(--line);margin-top:14px;padding-top:14px;text-align:right;color:#59615d;line-height:1.9;font-size:14px}
+.meta{border-top:1px solid var(--line);margin-top:14px;padding-top:14px;text-align:right;color:#59615d;line-height:1.9;font-size:14px}.activation{text-align:right;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 .toprow{display:flex;align-items:center;justify-content:space-between;gap:10px}.toprow button{width:auto;height:40px;padding:0 14px;margin:0}.small{font-size:12px;color:var(--muted)}
 </style>
 </head>
@@ -51,6 +51,16 @@ button{width:100%;height:54px;border:0;border-radius:15px;font-size:16px;font-we
     <div id="couponCode" class="code"></div>
     <div id="statusBadge" class="status"></div>
     <div id="meta" class="meta"></div>
+    <div id="activationBox" class="activation hide">
+      <h3>تفعيل الكرت للمشترك</h3>
+      <p class="small">التفعيل يربط الكرت بصاحبه ولا يستخدم الخصم.</p>
+      <label>اسم المشترك</label>
+      <input id="participantName" autocomplete="name" placeholder="اسم المشترك">
+      <label>رقم الجوال</label>
+      <input id="participantPhone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05xxxxxxxx">
+      <button id="activateBtn" class="primary" onclick="activatePrintedCard()">تسجيل وربط المشترك</button>
+      <div id="activationMsg" class="msg hide"></div>
+    </div>
     <button id="redeemBtn" class="redeem hide" onclick="redeemCoupon()">استخدام الكوبون الآن</button>
   </section>
 </div>
@@ -101,21 +111,47 @@ async function verifyCoupon(){
   if(!data?.ok){showMsg("verifyMsg",data?.message||"الكوبون غير موجود.","err");return}
   currentReward=data.reward; renderReward();
 }
+function isPrintedPlaceholder(r){
+  const c=(r?.couponCode||"").toUpperCase();
+  const p=(r?.phone||"").toUpperCase();
+  const n=r?.name||"";
+  return /^HY96-P[0-9]{3}$/.test(c) && (p.startsWith("PRINT-") || n.startsWith("بطاقة البطولة"));
+}
+function effectiveStatus(r){
+  let s=r?.status||"";
+  if(s==="ACTIVE" && r?.expiresAt && new Date(r.expiresAt).getTime()<Date.now()) s="EXPIRED";
+  return s;
+}
 function renderReward(){
-  const r=currentReward; if(!r)return;
+  const r=currentReward;if(!r)return;
+  const placeholder=isPrintedPlaceholder(r), status=effectiveStatus(r);
   discount.textContent=(r.discount||0)+"%";
-  custName.textContent=r.name||"";
+  custName.textContent=placeholder?"كرت مطبوع غير مفعّل":(r.name||"");
   couponCode.textContent=r.couponCode||"";
-  let status=r.status||"";
-  statusBadge.textContent=status==="ACTIVE"?"نشط":status==="USED"?"مستخدم":status==="EXPIRED"?"منتهي":status;
-  statusBadge.className="status "+(status==="ACTIVE"?"active":status==="USED"?"used":"expired");
+  statusBadge.textContent=placeholder&&status==="ACTIVE"?"بانتظار التفعيل":status==="ACTIVE"?"مفعّل":status==="USED"?"مستخدم":status==="EXPIRED"?"منتهي":status;
+  statusBadge.className="status "+(status==="ACTIVE"&&!placeholder?"active":status==="USED"?"used":"expired");
   let lines=["الفعالية: HYROX96","الصلاحية: حتى 31 أكتوبر 2026"];
-  if(r.usedAt) lines.push("تم الاستخدام: "+new Date(r.usedAt).toLocaleString("ar-SA"));
-  if(r.usedBy) lines.push("بواسطة: "+r.usedBy);
+  if(r.usedAt)lines.push("تم الاستخدام: "+new Date(r.usedAt).toLocaleString("ar-SA"));
+  if(r.usedBy)lines.push("بواسطة: "+r.usedBy);
   meta.innerHTML=lines.join("<br>");
-  redeemBtn.classList.toggle("hide",status!=="ACTIVE");
+  activationBox.classList.toggle("hide",!(placeholder&&status==="ACTIVE"));
+  redeemBtn.classList.toggle("hide",status!=="ACTIVE"||placeholder);
   resultCard.classList.remove("hide");
 }
+async function activatePrintedCard(){
+  if(!currentReward||!isPrintedPlaceholder(currentReward))return;
+  hideMsg("activationMsg");
+  const n=participantName.value.trim(),p=participantPhone.value.trim();
+  if(n.length<2){showMsg("activationMsg","يرجى إدخال اسم المشترك.","err");return}
+  if(!p){showMsg("activationMsg","يرجى إدخال رقم الجوال.","err");return}
+  activateBtn.disabled=true;activateBtn.textContent="جارٍ التفعيل...";
+  const {data,error}=await sb.rpc("hyrox96_activate_printed_card",{p_coupon:currentReward.couponCode,p_name:n,p_phone:p});
+  activateBtn.disabled=false;activateBtn.textContent="تسجيل وربط المشترك";
+  if(error){showMsg("activationMsg",error.message||"تعذر تفعيل الكرت.","err");return}
+  await verifyCoupon();
+  showMsg("verifyMsg",data?.message||"تم تفعيل الكرت وربطه بالمشترك.","ok");
+}
+
 async function redeemCoupon(){
   if(!currentReward||currentReward.status!=="ACTIVE")return;
   if(!confirm("تأكيد استخدام الكوبون؟ بعد التأكيد لا يمكن استخدامه مرة أخرى."))return;
